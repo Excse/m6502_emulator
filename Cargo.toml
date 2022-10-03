@@ -1,0 +1,9 @@
+[package]
+name = "m6052_emulator"
+version = "0.1.0"
+edition = "2021"
+authors = ["Timo"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
