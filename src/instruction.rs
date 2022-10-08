@@ -21,7 +21,7 @@ pub enum AddressingMode {
 impl fmt::Display for AddressingMode {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            AddressingMode::Accumulator => write!(f, "Implied"),
+            AddressingMode::Accumulator => write!(f, "Accumulator"),
             AddressingMode::Absolute => write!(f, "Absolute"),
             AddressingMode::AbsoluteXIndexed => write!(f, "Absolute x indexed"),
             AddressingMode::AbsoluteYIndexed => write!(f, "Absolute y indexed"),

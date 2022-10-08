@@ -48,12 +48,12 @@ pub struct CPU<'a> {
 impl<'a> CPU<'a> {
     pub fn new(memory: &'a mut dyn Memory) -> CPU<'a> {
         CPU {
-            program_counter: 0,
+            program_counter: 0x0200,
             accumulator: 0,
             x: 0,
             y: 0,
             memory,
-            stack_pointer: 0,
+            stack_pointer: 0xFF,
             negative: false,
             overflow: false,
             _break: false,
@@ -66,127 +66,172 @@ impl<'a> CPU<'a> {
 
     pub fn run(&mut self, cycles: &mut isize) {
         while *cycles > 0 {
-            /* Fetch */
-            let opcode = self.memory.read(cycles, self.program_counter);
-            self.program_counter += 1;
-
-            /* Execute */
-            self.execute(cycles, opcode);
+            self.cycle(cycles);
         }
     }
 
-    pub fn execute(&mut self, cycles: &mut isize, opcode: u8) {
-        let instruction = OPCODES[opcode as usize];
+    pub fn cycle(&mut self, cycles: &mut isize) {
+        /* Fetch */
+        let opcode = self.memory.read(cycles, self.program_counter);
+        self.program_counter += 1;
+
+        /* Decode */
+        let instruction = OPCODES[opcode as usize]
+            .expect("Illegal opcode!");
+
+        /* Execute */
+        self.execute(cycles, instruction);
+    }
+
+    pub fn execute(&mut self, cycles: &mut isize, instruction: Instruction) {
         match instruction {
-            Some(Instruction::AddWithCarry(_)) => {}
-            Some(Instruction::And(_)) => {}
-            Some(Instruction::ArithmeticShiftLeft(_)) => {}
-            Some(Instruction::BranchOnCarryClear(_)) => {}
-            Some(Instruction::BranchOnCarrySet(_)) => {}
-            Some(Instruction::BranchOnEqual(_)) => {}
-            Some(Instruction::BitTest(_)) => {}
-            Some(Instruction::BranchOnMinus(_)) => {}
-            Some(Instruction::BranchOnNotEqual(_)) => {}
-            Some(Instruction::BranchOnPlus(_)) => {}
-            Some(Instruction::Break(_)) => {}
-            Some(Instruction::BranchOnOverflowClear(_)) => {}
-            Some(Instruction::BranchOnOverflowSet(_)) => {}
-            Some(Instruction::ClearCarry(_)) => {}
-            Some(Instruction::ClearDecimal(_)) => {}
-            Some(Instruction::ClearInterruptDisable(_)) => {}
-            Some(Instruction::ClearOverflow(_)) => {}
-            Some(Instruction::Compare(_)) => {}
-            Some(Instruction::CompareWithX(_)) => {}
-            Some(Instruction::CompareWithY(_)) => {}
-            Some(Instruction::Decrement(_)) => {}
-            Some(Instruction::DecrementX(_)) => {}
-            Some(Instruction::DecrementY(_)) => {}
-            Some(Instruction::ExclusiveOr(_)) => {}
-            Some(Instruction::Increment(_)) => {}
-            Some(Instruction::IncrementX(_)) => {}
-            Some(Instruction::IncrementY(_)) => {}
-            Some(Instruction::Jump(_)) => {}
-            Some(Instruction::JumpSubroutine(_)) => {}
-            Some(Instruction::LoadAccumulator(mode)) => { self.load_accumulator(cycles, mode) }
-            Some(Instruction::LoadX(mode)) => { self.load_x(cycles, mode) }
-            Some(Instruction::LoadY(mode)) => { self.load_y(cycles, mode) }
-            Some(Instruction::LogicalShiftRight(_)) => {}
-            Some(Instruction::NoOperation(_)) => {}
-            Some(Instruction::OrWithAccumulator(_)) => {}
-            Some(Instruction::PushAccumulator(_)) => {}
-            Some(Instruction::PushProcessorStatus(_)) => {}
-            Some(Instruction::PullAccumulator(_)) => {}
-            Some(Instruction::PullProcessorStatus(_)) => {}
-            Some(Instruction::RotateLeft(_)) => {}
-            Some(Instruction::RotateRight(_)) => {}
-            Some(Instruction::ReturnFormInterrupt(_)) => {}
-            Some(Instruction::ReturnFromSubroutine(_)) => {}
-            Some(Instruction::SubtractWithCarry(_)) => {}
-            Some(Instruction::SetCarry(_)) => {}
-            Some(Instruction::SetDecimal(_)) => {}
-            Some(Instruction::SetInterruptDisable(_)) => {}
-            Some(Instruction::StoreAccumulator(mode)) => { self.store_accumulator(cycles, mode) }
-            Some(Instruction::StoreX(mode)) => { self.store_x(cycles, mode) }
-            Some(Instruction::StoreY(mode)) => { self.store_y(cycles, mode) }
-            Some(Instruction::TransferAccumulatorToX(_)) => { self.transfer_accumulator_to_x() }
-            Some(Instruction::TransferAccumulatorToY(_)) => { self.transfer_accumulator_to_y() }
-            Some(Instruction::TransferStackpointerToX(_)) => { self.transfer_stack_pointer_to_x() }
-            Some(Instruction::TransferXToAccumulator(_)) => { self.transfer_x_to_accumulator() }
-            Some(Instruction::TransferXToStackpointer(_)) => { self.transfer_x_to_stack_pointr() }
-            Some(Instruction::TransferYToAccumulator(_)) => { self.transfer_y_to_accumulator() }
-            None => {}
+            Instruction::AddWithCarry(_) => {}
+            Instruction::And(mode) => { self.and(cycles, mode) }
+            Instruction::ArithmeticShiftLeft(_) => {}
+            Instruction::BranchOnCarryClear(_) => {}
+            Instruction::BranchOnCarrySet(_) => {}
+            Instruction::BranchOnEqual(_) => {}
+            Instruction::BitTest(mode) => { self.bittest(cycles, mode) }
+            Instruction::BranchOnMinus(_) => {}
+            Instruction::BranchOnNotEqual(_) => {}
+            Instruction::BranchOnPlus(_) => {}
+            Instruction::Break(_) => {}
+            Instruction::BranchOnOverflowClear(_) => {}
+            Instruction::BranchOnOverflowSet(_) => {}
+            Instruction::ClearCarry(_) => {}
+            Instruction::ClearDecimal(_) => {}
+            Instruction::ClearInterruptDisable(_) => {}
+            Instruction::ClearOverflow(_) => {}
+            Instruction::Compare(_) => {}
+            Instruction::CompareWithX(_) => {}
+            Instruction::CompareWithY(_) => {}
+            Instruction::Decrement(_) => {}
+            Instruction::DecrementX(_) => {}
+            Instruction::DecrementY(_) => {}
+            Instruction::ExclusiveOr(mode) => { self.exclusive_or(cycles, mode) }
+            Instruction::Increment(_) => {}
+            Instruction::IncrementX(_) => {}
+            Instruction::IncrementY(_) => {}
+            Instruction::Jump(_) => {}
+            Instruction::JumpSubroutine(_) => {}
+            Instruction::LoadAccumulator(mode) => { self.load_accumulator(cycles, mode) }
+            Instruction::LoadX(mode) => { self.load_x(cycles, mode) }
+            Instruction::LoadY(mode) => { self.load_y(cycles, mode) }
+            Instruction::LogicalShiftRight(_) => {}
+            Instruction::NoOperation(_) => {}
+            Instruction::OrWithAccumulator(mode) => { self.or_with_accumulator(cycles, mode) }
+            Instruction::PushAccumulator(_) => { self.push_accumulator(cycles) }
+            Instruction::PushProcessorStatus(_) => { self.push_processor_status(cycles) }
+            Instruction::PullAccumulator(_) => { self.pull_accumulator(cycles) }
+            Instruction::PullProcessorStatus(_) => { self.pull_processor_status(cycles) }
+            Instruction::RotateLeft(_) => {}
+            Instruction::RotateRight(_) => {}
+            Instruction::ReturnFormInterrupt(_) => {}
+            Instruction::ReturnFromSubroutine(_) => {}
+            Instruction::SubtractWithCarry(_) => {}
+            Instruction::SetCarry(_) => {}
+            Instruction::SetDecimal(_) => {}
+            Instruction::SetInterruptDisable(_) => {}
+            Instruction::StoreAccumulator(mode) => { self.store_accumulator(cycles, mode) }
+            Instruction::StoreX(mode) => { self.store_x(cycles, mode) }
+            Instruction::StoreY(mode) => { self.store_y(cycles, mode) }
+            Instruction::TransferAccumulatorToX(_) => { self.transfer_accumulator_to_x(cycles) }
+            Instruction::TransferAccumulatorToY(_) => { self.transfer_accumulator_to_y(cycles) }
+            Instruction::TransferStackpointerToX(_) => { self.transfer_stack_pointer_to_x(cycles) }
+            Instruction::TransferXToAccumulator(_) => { self.transfer_x_to_accumulator(cycles) }
+            Instruction::TransferXToStackpointer(_) => { self.transfer_x_to_stack_pointr(cycles) }
+            Instruction::TransferYToAccumulator(_) => { self.transfer_y_to_accumulator(cycles) }
         }
     }
 
-    fn get_address(&mut self, cycles: &mut isize, mode: AddressingMode) -> Option<u16> {
+    fn get_processor_status(&self) -> u8 {
+        (self.negative as u8) << 7 | (self.overflow as u8) << 6 | 0x20
+            | (self._break as u8) << 4 | (self.decimal as u8) << 3
+            | (self.interrupt as u8) << 2 | (self.zero as u8) << 1
+            | (self.carry as u8) << 0
+    }
+
+    fn set_processor_status(&mut self, value: u8) {
+        self.negative = (value & 0x80) != 0;
+        self.overflow = (value & 0x40) != 0;
+        self._break = (value & 0x10) != 0;
+        self.decimal = (value & 0x8) != 0;
+        self.interrupt = (value & 0x4) != 0;
+        self.zero = (value & 0x2) != 0;
+        self.carry = (value & 0x1) != 0;
+    }
+
+    fn get_address(&mut self, page_crossing: bool, cycles: &mut isize,
+                   mode: AddressingMode) -> Option<u16> {
         match mode {
             AddressingMode::Absolute => {
-                let adress_low = self.memory.read(cycles, self.program_counter);
+                let address_low = self.memory.read(cycles, self.program_counter) as u16;
                 self.program_counter += 1;
-                let adress_high = self.memory.read(cycles, self.program_counter);
+                let address_high = self.memory.read(cycles, self.program_counter) as u16;
                 self.program_counter += 1;
-                let address = (adress_low as u16) + ((adress_high as u16) << 8);
+
+                let address = address_low + (address_high << 8);
                 Some(address)
             }
             AddressingMode::AbsoluteXIndexed => {
-                let adress_low = self.memory.read(cycles, self.program_counter);
+                let address_low = self.memory.read(cycles, self.program_counter) as u16;
                 self.program_counter += 1;
-                let adress_high = self.memory.read(cycles, self.program_counter);
+                let address_high = self.memory.read(cycles, self.program_counter) as u16;
                 self.program_counter += 1;
-                let mut address = (adress_low as u16) + ((adress_high as u16) << 8);
+
+                let mut address = address_low + (address_high << 8);
                 address += self.x as u16;
+
+                if page_crossing {
+                    let address_low_x = address_low + self.x as u16;
+                    if address_low_x > 0xFF {
+                        *cycles -= 1;
+                    }
+                }
+
                 Some(address)
             }
             AddressingMode::AbsoluteYIndexed => {
-                let adress_low = self.memory.read(cycles, self.program_counter);
+                let address_low = self.memory.read(cycles, self.program_counter) as u16;
                 self.program_counter += 1;
-                let adress_high = self.memory.read(cycles, self.program_counter);
+                let address_high = self.memory.read(cycles, self.program_counter) as u16;
                 self.program_counter += 1;
-                let mut address = (adress_low as u16) + ((adress_high as u16) << 8);
+
+                let mut address = address_low + (address_high << 8);
                 address += self.y as u16;
+
+                if page_crossing {
+                    let address_low_x = address_low + self.x as u16;
+                    if address_low_x > 0xFF {
+                        *cycles -= 1;
+                    }
+                }
+
                 Some(address)
             }
             AddressingMode::Relative => {
                 let offset = self.memory.read(cycles, self.program_counter) as i8;
                 self.program_counter += 1;
-                let address = self.program_counter + (offset as u16);
+                let address = self.program_counter.wrapping_add(offset as u16);
                 Some(address)
             }
             AddressingMode::Zeropage => {
-                let address = self.memory.read(cycles, self.program_counter) as u16;
+                let address = self.memory.read(cycles, self.program_counter);
                 self.program_counter += 1;
-                Some(address)
+                Some(address as u16)
             }
             AddressingMode::ZeropageXIndexed => {
                 let mut address = self.memory.read(cycles, self.program_counter);
                 self.program_counter += 1;
                 address += self.x;
+                *cycles -= 1;
                 Some(address as u16)
             }
             AddressingMode::ZeropageYIndexed => {
                 let mut address = self.memory.read(cycles, self.program_counter);
                 self.program_counter += 1;
                 address += self.y;
+                *cycles -= 1;
                 Some(address as u16)
             }
             AddressingMode::Indirect => { panic!("Not implemented yet!") }
@@ -196,8 +241,8 @@ impl<'a> CPU<'a> {
         }
     }
 
-    fn get_value(&mut self, cycles: &mut isize, mode: AddressingMode) -> u8 {
-        let address = self.get_address(cycles, mode);
+    fn get_value(&mut self, page_crossing: bool, cycles: &mut isize, mode: AddressingMode) -> u8 {
+        let address = self.get_address(page_crossing, cycles, mode);
         match address {
             Some(address) => {
                 let value = self.memory.read(cycles, address);
@@ -215,84 +260,160 @@ impl<'a> CPU<'a> {
         }
     }
 
+    fn push_stack(&mut self, cycles: &mut isize, value: u8) {
+        let address = 0x0100 + self.stack_pointer as u16;
+        self.memory.write(cycles, address, value);
+        self.stack_pointer -= 1;
+        *cycles -= 1;
+    }
+
+    fn pop_stack(&mut self, cycles: &mut isize) -> u8 {
+        self.stack_pointer += 1;
+        *cycles -= 1;
+        let address = 0x0100 + self.stack_pointer as u16;
+        let value = self.memory.read(cycles, address);
+        value
+    }
+
     fn load_accumulator(&mut self, cycles: &mut isize, mode: AddressingMode) {
-        let value = self.get_value(cycles, mode);
+        let value = self.get_value(true, cycles, mode);
         self.accumulator = value;
         self.zero = value == 0;
-        self.negative = (value >> 7) != 0;
+        self.negative = (value & 0x80) != 0;
     }
 
     fn load_x(&mut self, cycles: &mut isize, mode: AddressingMode) {
-        let value = self.get_value(cycles, mode);
+        let value = self.get_value(true, cycles, mode);
         self.x = value;
         self.zero = value == 0;
-        self.negative = (value >> 7) != 0;
+        self.negative = (value & 0x80) != 0;
     }
 
     fn load_y(&mut self, cycles: &mut isize, mode: AddressingMode) {
-        let value = self.get_value(cycles, mode);
+        let value = self.get_value(true, cycles, mode);
         self.y = value;
         self.zero = value == 0;
-        self.negative = (value >> 7) != 0;
+        self.negative = (value & 0x80) != 0;
     }
 
     fn store_accumulator(&mut self, cycles: &mut isize, mode: AddressingMode) {
-        let address = self.get_address(cycles, mode)
+        let address = self.get_address(false, cycles, mode)
             .expect("Couldn't get the address of this instruction.");
         self.memory.write(cycles, address, self.accumulator);
     }
 
     fn store_x(&mut self, cycles: &mut isize, mode: AddressingMode) {
-        let address = self.get_address(cycles, mode)
+        let address = self.get_address(false, cycles, mode)
             .expect("Couldn't get the address of this instruction.");
         self.memory.write(cycles, address, self.x);
     }
 
     fn store_y(&mut self, cycles: &mut isize, mode: AddressingMode) {
-        let address = self.get_address(cycles, mode)
+        let address = self.get_address(false, cycles, mode)
             .expect("Couldn't get the address of this instruction.");
         self.memory.write(cycles, address, self.y);
     }
 
-    fn transfer_accumulator_to_x(&mut self) {
+    fn transfer_accumulator_to_x(&mut self, cycles: &mut isize) {
         let value = self.accumulator;
         self.x = value;
         self.zero = value == 0;
-        self.negative = (value >> 7) != 0;
+        self.negative = (value & 0x80) != 0;
+        *cycles -= 1;
     }
 
-    fn transfer_accumulator_to_y(&mut self) {
+    fn transfer_accumulator_to_y(&mut self, cycles: &mut isize) {
         let value = self.accumulator;
         self.y = value;
         self.zero = value == 0;
-        self.negative = (value >> 7) != 0;
+        self.negative = (value & 0x80) != 0;
+        *cycles -= 1;
     }
 
-    fn transfer_stack_pointer_to_x(&mut self) {
+    fn transfer_stack_pointer_to_x(&mut self, cycles: &mut isize) {
         let value = self.stack_pointer;
         self.x = value;
         self.zero = value == 0;
-        self.negative = (value >> 7) != 0;
+        self.negative = (value & 0x80) != 0;
+        *cycles -= 1;
     }
 
-    fn transfer_x_to_accumulator(&mut self) {
+    fn transfer_x_to_accumulator(&mut self, cycles: &mut isize) {
         let value = self.x;
         self.accumulator = value;
         self.zero = value == 0;
-        self.negative = (value >> 7) != 0;
+        self.negative = (value & 0x80) != 0;
+        *cycles -= 1;
     }
 
-    fn transfer_x_to_stack_pointr(&mut self) {
+    fn transfer_x_to_stack_pointr(&mut self, cycles: &mut isize) {
         let value = self.x;
         self.stack_pointer = value;
         self.zero = value == 0;
-        self.negative = (value >> 7) != 0;
+        self.negative = (value & 0x80) != 0;
+        *cycles -= 1;
     }
 
-    fn transfer_y_to_accumulator(&mut self) {
+    fn transfer_y_to_accumulator(&mut self, cycles: &mut isize) {
         let value = self.y;
         self.accumulator = value;
         self.zero = value == 0;
-        self.negative = (value >> 7) != 0;
+        self.negative = (value & 0x80) != 0;
+        *cycles -= 1;
+    }
+
+    fn push_accumulator(&mut self, cycles: &mut isize) {
+        self.push_stack(cycles, self.accumulator);
+    }
+
+    fn push_processor_status(&mut self, cycles: &mut isize) {
+        let status = self.get_processor_status();
+        self.push_stack(cycles, status);
+    }
+
+    fn pull_accumulator(&mut self, cycles: &mut isize) {
+        let value = self.pop_stack(cycles);
+        self.accumulator = value;
+        self.zero = value == 0;
+        self.negative = (value & 0x80) != 0;
+        *cycles -= 1;
+    }
+
+    fn pull_processor_status(&mut self, cycles: &mut isize) {
+        let value = self.pop_stack(cycles);
+        self.set_processor_status(value);
+        *cycles -= 1;
+    }
+
+    fn and(&mut self, cycles: &mut isize, mode: AddressingMode) {
+        let value = self.get_value(true, cycles, mode);
+        let result = self.accumulator & value;
+        self.accumulator = result;
+        self.zero = result == 0;
+        self.negative = (result & 0x80) != 0;
+    }
+
+    fn exclusive_or(&mut self, cycles: &mut isize, mode: AddressingMode) {
+        let value = self.get_value(true, cycles, mode);
+        let result = self.accumulator ^ value;
+        self.accumulator = result;
+        self.zero = result == 0;
+        self.negative = (result & 0x80) != 0;
+    }
+
+    fn or_with_accumulator(&mut self, cycles: &mut isize, mode: AddressingMode) {
+        let value = self.get_value(true, cycles, mode);
+        let result = self.accumulator | value;
+        self.accumulator = result;
+        self.zero = result == 0;
+        self.negative = (result & 0x80) != 0;
+    }
+
+    fn bittest(&mut self, cycles: &mut isize, mode: AddressingMode) {
+        let value = self.get_value(true, cycles, mode);
+        let result = self.accumulator & value;
+        self.zero = result == 0;
+        self.negative = (value & 0x80) != 0;
+        self.overflow = (value & 0x40) != 0;
     }
 }
